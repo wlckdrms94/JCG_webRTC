@@ -11,10 +11,6 @@ const LoginContainer = styled.div`
   background-color: #f5f5f5;
 `;
 
-const LoginTitle = styled.h2`
-  font-weight:bold;
-`;
-
 const LoginInput = styled.input`
   padding: 10px;
   font-size: 16px;
@@ -49,6 +45,8 @@ const Login = ({ onLogin }) => {
           password
         });
         const token = response.data.token;
+        localStorage.setItem('token', token);
+        localStorage.setItem('username', username);
         onLogin(token, username);
       } catch (error) {
         console.error('Login error', error);
@@ -59,7 +57,6 @@ const Login = ({ onLogin }) => {
 
   return (
     <LoginContainer>
-      <LoginTitle>Login</LoginTitle>
       <LoginInput
         type="text"
         placeholder="Enter your username"
