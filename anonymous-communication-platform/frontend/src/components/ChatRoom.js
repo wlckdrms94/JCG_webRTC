@@ -84,18 +84,18 @@ const ChatRoom = ({ token, username }) => {
     socket.current = io('http://localhost:4000', {
       auth: { token },
     });
-
+  
     socket.current.on('receiveMessage', (message) => {
       setMessages((prevMessages) => [...prevMessages, message]);
       if (document.hidden) {
         new Notification(`${message.nickname}: ${message.text}`);
       }
     });
-
+  
     socket.current.on('users', (users) => {
       setUsers(users);
     });
-
+  
     const fetchMessages = async (page) => {
       setLoading(true);
       try {
@@ -110,13 +110,14 @@ const ChatRoom = ({ token, username }) => {
         setLoading(false);
       }
     };
-
+  
     fetchMessages(page);
-
+  
     return () => {
       socket.current.disconnect();
     };
   }, [token, page]);
+  
 
   useEffect(() => {
     if (Notification.permission === 'default') {
@@ -134,7 +135,7 @@ const ChatRoom = ({ token, username }) => {
       if (file) {
         const formData = new FormData();
         formData.append('file', file);
-
+  
         axios.post('http://localhost:4000/upload', formData, {
           headers: { Authorization: `Bearer ${token}` },
         })
@@ -152,6 +153,7 @@ const ChatRoom = ({ token, username }) => {
       setMessage('');
     }
   };
+  
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);

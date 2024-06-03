@@ -75,11 +75,15 @@ io.on('connection', async (socket) => {
   });
 
   socket.on('sendMessage', async (message) => {
-    const newMessage = new Message(message);
-    await newMessage.save();
-    io.emit('receiveMessage', message);
+    try {
+      const newMessage = new Message(message);
+      await newMessage.save();
+      io.emit('receiveMessage', message);
+    } catch (error) {
+      console.error('Error saving message:', error);
+    }
   });
-
+  
   socket.on('disconnect', () => {
     const user = users.find(user => user.id === socket.id);
     if (user) {
