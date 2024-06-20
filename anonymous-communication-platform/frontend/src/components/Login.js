@@ -33,25 +33,16 @@ const LoginButton = styled.button`
   }
 `;
 
-const Login = ({ onLogin }) => {
+const Login = ({ onLogin, onRegister }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
   const handleLogin = async () => {
-    if (username.trim() && password.trim()) {
-      try {
-        const response = await axios.post('http://localhost:4000/auth/login', {
-          username,
-          password
-        });
-        const token = response.data.token;
-        localStorage.setItem('token', token);
-        localStorage.setItem('username', username);
-        onLogin(token, username);
-      } catch (error) {
-        console.error('Login error', error);
-        alert('Login failed');
-      }
+    try {
+      const response = await axios.post('http://localhost:4000/auth/login', { username, password });
+      onLogin(response.data.token);
+    } catch (error) {
+      alert('Login failed');
     }
   };
 
@@ -70,6 +61,7 @@ const Login = ({ onLogin }) => {
         onChange={(e) => setPassword(e.target.value)}
       />
       <LoginButton onClick={handleLogin}>Login</LoginButton>
+      <LoginButton onClick={onRegister}>Register</LoginButton>
     </LoginContainer>
   );
 };
