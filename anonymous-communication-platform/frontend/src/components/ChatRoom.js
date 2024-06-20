@@ -97,7 +97,7 @@ const ChatRoom = ({ token, username }) => {
   const handleSendMessage = () => {
     if (message.trim()) {
       const newMessage = {
-        nickname: username,
+        nickname: username, // Ensure the nickname is sent with the message
         text: message,
         timestamp: new Date()
       };
@@ -118,7 +118,7 @@ const ChatRoom = ({ token, username }) => {
         }
       });
       const newMessage = {
-        nickname: username,
+        nickname: username, // Ensure the nickname is sent with the message
         text: response.data.filePath,
         timestamp: new Date(),
         file: response.data.filePath

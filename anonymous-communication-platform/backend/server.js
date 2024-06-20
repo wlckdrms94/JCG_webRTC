@@ -5,8 +5,8 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const multer = require('multer');
 const path = require('path');
-const { router: authRouter, authenticate } = require('./auth');
 const jwt = require('jsonwebtoken');
+const { router: authRouter, authenticate } = require('./auth');
 
 const app = express();
 const server = http.createServer(app);
@@ -22,7 +22,10 @@ app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/auth', authRouter);
 
-mongoose.connect('mongodb://localhost:27017/chat');
+mongoose.connect('mongodb://localhost:27017/chat', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
 
 const messageSchema = new mongoose.Schema({
   nickname: String,
@@ -41,6 +44,7 @@ io.use((socket, next) => {
     try {
       const decoded = jwt.verify(token, 'your_jwt_secret');
       socket.user = decoded;
+      console.log("Decoded user:", socket.user); // 디버깅 로그 추가
       next();
     } catch (error) {
       next(new Error('Authentication error'));
@@ -60,7 +64,9 @@ io.on('connection', async (socket) => {
     console.error('Error loading messages:', error);
   }
 
-  socket.on('join', (nickname) => {
+  socket.on('join', () => {
+    const nickname = socket.user.username; // 사용자 이름을 가져옵니다.
+    console.log("User joined:", nickname); // 디버깅 로그 추가
     const existingUser = users.find(user => user.id === socket.id);
     if (!existingUser) {
       users.push({ id: socket.id, nickname });
@@ -71,10 +77,11 @@ io.on('connection', async (socket) => {
 
   socket.on('sendMessage', async (message) => {
     const newMessage = new Message({
-      nickname: message.nickname, // Ensure nickname is set from the client message
+      nickname: socket.user.username || "unknown", // Ensure the nickname is from the authenticated user
       text: message.text,
       timestamp: new Date()
     });
+    console.log("New message:", newMessage); // 메시지가 제대로 생성되었는지 확인하기 위해 로그 추가
     await newMessage.save();
     io.emit('receiveMessage', newMessage);
   });
