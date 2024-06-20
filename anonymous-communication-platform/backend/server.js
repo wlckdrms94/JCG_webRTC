@@ -5,7 +5,8 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const multer = require('multer');
 const path = require('path');
-const { router: authRouter, authenticate } = require('./auth'); // auth.js 파일 불러오기
+const { router: authRouter, authenticate } = require('./auth');
+const jwt = require('jsonwebtoken');
 
 const app = express();
 const server = http.createServer(app);
@@ -17,17 +18,11 @@ const io = socketIo(server, {
 });
 
 app.use(cors());
-app.use(express.json()); // JSON 요청 본문 처리
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // 정적 파일 제공 경로 설정
-app.use('/auth', authRouter); // auth 라우터 사용
+app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/auth', authRouter);
 
-mongoose.connect('mongodb://localhost:27017/chat', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 50000 // 타임아웃 시간 증가
-})
-.then(() => console.log('MongoDB connected'))
-.catch(error => console.error('MongoDB connection error:', error));
+mongoose.connect('mongodb://localhost:27017/chat');
 
 const messageSchema = new mongoose.Schema({
   nickname: String,
@@ -70,26 +65,26 @@ io.on('connection', async (socket) => {
     if (!existingUser) {
       users.push({ id: socket.id, nickname });
       io.emit('users', users);
-      io.emit('receiveMessage', { nickname: 'System', text: `${nickname} joined the chat` });
+      io.emit('receiveMessage', { nickname: 'System', text: `${nickname} joined the chat`, timestamp: new Date() });
     }
   });
 
   socket.on('sendMessage', async (message) => {
-    try {
-      const newMessage = new Message(message);
-      await newMessage.save();
-      io.emit('receiveMessage', message);
-    } catch (error) {
-      console.error('Error saving message:', error);
-    }
+    const newMessage = new Message({
+      nickname: message.nickname, // Ensure nickname is set from the client message
+      text: message.text,
+      timestamp: new Date()
+    });
+    await newMessage.save();
+    io.emit('receiveMessage', newMessage);
   });
-  
+
   socket.on('disconnect', () => {
     const user = users.find(user => user.id === socket.id);
     if (user) {
       users = users.filter(user => user.id !== socket.id);
       io.emit('users', users);
-      io.emit('receiveMessage', { nickname: 'System', text: `${user.nickname} left the chat` });
+      io.emit('receiveMessage', { nickname: 'System', text: `${user.nickname} left the chat`, timestamp: new Date() });
     }
     console.log('Client disconnected');
   });
@@ -118,16 +113,13 @@ app.post('/upload', authenticate, upload.single('file'), (req, res) => {
 
 app.get('/messages', authenticate, async (req, res) => {
   const { page = 1, limit = 10 } = req.query;
-  console.log(`Fetching messages for page: ${page}, limit: ${limit}`);
   try {
     const messages = await Message.find()
       .sort({ timestamp: -1 })
       .skip((page - 1) * limit)
       .limit(parseInt(limit));
-    console.log(`Fetched messages: ${messages.length}`);
     res.json(messages);
   } catch (error) {
-    console.error('Failed to load messages:', error);
     res.status(500).json({ error: 'Failed to load messages' });
   }
 });
