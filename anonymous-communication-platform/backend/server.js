@@ -79,7 +79,8 @@ io.on('connection', async (socket) => {
     const newMessage = new Message({
       nickname: socket.user.username || "unknown", // Ensure the nickname is from the authenticated user
       text: message.text,
-      timestamp: new Date()
+      timestamp: new Date(),
+      file: message.file || null // 파일 경로 저장
     });
     console.log("New message:", newMessage); // 메시지가 제대로 생성되었는지 확인하기 위해 로그 추가
     await newMessage.save();

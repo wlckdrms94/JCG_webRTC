@@ -76,7 +76,7 @@ const ChatRoom = ({ token, username }) => {
     });
 
     socketRef.current.on('loadMessages', (loadedMessages) => {
-      setMessages(loadedMessages);
+      setMessages(loadedMessages.reverse());
     });
 
     socketRef.current.on('receiveMessage', (newMessage) => {
@@ -97,7 +97,7 @@ const ChatRoom = ({ token, username }) => {
   const handleSendMessage = () => {
     if (message.trim()) {
       const newMessage = {
-        nickname: username, // Ensure the nickname is sent with the message
+        nickname: username,
         text: message,
         timestamp: new Date()
       };
@@ -118,7 +118,7 @@ const ChatRoom = ({ token, username }) => {
         }
       });
       const newMessage = {
-        nickname: username, // Ensure the nickname is sent with the message
+        nickname: username,
         text: response.data.filePath,
         timestamp: new Date(),
         file: response.data.filePath
@@ -140,6 +140,11 @@ const ChatRoom = ({ token, username }) => {
         {messages.map((msg, index) => (
           <div key={index}>
             <strong>{moment(msg.timestamp).format('YY-MM-DD HH:mm')}</strong> ({msg.nickname}): {msg.text}
+            {msg.file && (
+              <div>
+                <a href={msg.file} download>Download File</a>
+              </div>
+            )}
           </div>
         ))}
       </MessageList>
