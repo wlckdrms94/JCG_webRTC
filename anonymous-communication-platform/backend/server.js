@@ -5,7 +5,6 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const multer = require('multer');
 const path = require('path');
-const jwt = require('jsonwebtoken');
 const { router: authRouter, authenticate } = require('./auth');
 
 const app = express();
@@ -25,6 +24,7 @@ app.use('/auth', authRouter);
 mongoose.connect('mongodb://localhost:27017/chat', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 50000 // 타임아웃 시간 증가
 });
 
 const messageSchema = new mongoose.Schema({
@@ -34,7 +34,7 @@ const messageSchema = new mongoose.Schema({
   file: String
 });
 
-const Message = mongoose.model('Message', messageSchema);
+const Message = mongoose.models.Message || mongoose.model('Message', messageSchema);
 
 let users = [];
 
@@ -44,7 +44,6 @@ io.use((socket, next) => {
     try {
       const decoded = jwt.verify(token, 'your_jwt_secret');
       socket.user = decoded;
-      console.log("Decoded user:", socket.user); // 디버깅 로그 추가
       next();
     } catch (error) {
       next(new Error('Authentication error'));
@@ -64,27 +63,19 @@ io.on('connection', async (socket) => {
     console.error('Error loading messages:', error);
   }
 
-  socket.on('join', () => {
-    const nickname = socket.user.username; // 사용자 이름을 가져옵니다.
-    console.log("User joined:", nickname); // 디버깅 로그 추가
+  socket.on('join', (nickname) => {
     const existingUser = users.find(user => user.id === socket.id);
     if (!existingUser) {
       users.push({ id: socket.id, nickname });
       io.emit('users', users);
-      io.emit('receiveMessage', { nickname: 'System', text: `${nickname} joined the chat`, timestamp: new Date() });
+      io.emit('receiveMessage', { nickname: 'System', text: `${nickname} joined the chat` });
     }
   });
 
   socket.on('sendMessage', async (message) => {
-    const newMessage = new Message({
-      nickname: socket.user.username || "unknown", // Ensure the nickname is from the authenticated user
-      text: message.text,
-      timestamp: new Date(),
-      file: message.file || null // 파일 경로 저장
-    });
-    console.log("New message:", newMessage); // 메시지가 제대로 생성되었는지 확인하기 위해 로그 추가
+    const newMessage = new Message(message);
     await newMessage.save();
-    io.emit('receiveMessage', newMessage);
+    io.emit('receiveMessage', message);
   });
 
   socket.on('disconnect', () => {
@@ -92,29 +83,29 @@ io.on('connection', async (socket) => {
     if (user) {
       users = users.filter(user => user.id !== socket.id);
       io.emit('users', users);
-      io.emit('receiveMessage', { nickname: 'System', text: `${user.nickname} left the chat`, timestamp: new Date() });
+      io.emit('receiveMessage', { nickname: 'System', text: `${user.nickname} left the chat` });
     }
     console.log('Client disconnected');
   });
 });
 
-const storage = multer.diskStorage({
+const profileStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, 'uploads'));
+    cb(null, path.join(__dirname, 'uploads/profiles'));
   },
   filename: (req, file, cb) => {
     cb(null, `${Date.now()}-${file.originalname}`);
   }
 });
 
-const upload = multer({ storage });
+const profileUpload = multer({ storage: profileStorage });
 
-app.post('/upload', authenticate, upload.single('file'), (req, res) => {
+app.post('/upload-profile', authenticate, profileUpload.single('profileImage'), (req, res) => {
   const file = req.file;
   if (file) {
-    res.json({ filePath: `/uploads/${file.filename}` });
+    res.json({ filePath: `/uploads/profiles/${file.filename}` });
   } else {
-    console.error('File upload failed:', req.error);
+    console.error('Profile image upload failed:', req.error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });

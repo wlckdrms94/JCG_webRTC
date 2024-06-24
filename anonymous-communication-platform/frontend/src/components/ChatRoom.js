@@ -1,73 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import styled from 'styled-components';
 import io from 'socket.io-client';
 import axios from 'axios';
 import moment from 'moment';
-
-const ChatRoomContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  background-color: #f5f5f5;
-`;
-
-const MessageList = styled.div`
-  flex: 1;
-  padding: 10px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column-reverse;
-`;
-
-const MessageInputContainer = styled.div`
-  display: flex;
-  padding: 10px;
-  background-color: #fff;
-  border-top: 1px solid #ccc;
-`;
-
-const MessageInput = styled.input`
-  flex: 1;
-  padding: 10px;
-  font-size: 16px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-`;
-
-const SendMessageButton = styled.button`
-  padding: 10px 20px;
-  font-size: 16px;
-  border: none;
-  border-radius: 4px;
-  background-color: #007bff;
-  color: white;
-  cursor: pointer;
-  margin-left: 10px;
-
-  &:hover {
-    background-color: #0056b3;
-  }
-`;
-
-const UploadButton = styled.label`
-  padding: 10px 20px;
-  font-size: 16px;
-  border: none;
-  border-radius: 4px;
-  background-color: #007bff;
-  color: white;
-  cursor: pointer;
-  margin-left: 10px;
-
-  &:hover {
-    background-color: #0056b3;
-  }
-`;
+import './ChatRoom.css';
 
 const ChatRoom = ({ token, username }) => {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [users, setUsers] = useState([]);
+  const [profileImage, setProfileImage] = useState('');
   const socketRef = useRef();
 
   useEffect(() => {
@@ -89,6 +30,21 @@ const ChatRoom = ({ token, username }) => {
 
     socketRef.current.emit('join', username);
 
+    const fetchProfileImage = async () => {
+      try {
+        const response = await axios.get('http://localhost:4000/auth/profile', {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        setProfileImage(response.data.profileImage);
+      } catch (error) {
+        console.error('Failed to fetch profile image', error);
+      }
+    };
+
+    fetchProfileImage();
+
     return () => {
       socketRef.current.disconnect();
     };
@@ -103,6 +59,23 @@ const ChatRoom = ({ token, username }) => {
       };
       socketRef.current.emit('sendMessage', newMessage);
       setMessage('');
+    }
+  };
+
+  const handleProfileImageUpload = async (e) => {
+    const file = e.target.files[0];
+    const formData = new FormData();
+    formData.append('profileImage', file);
+
+    try {
+      const response = await axios.post('http://localhost:4000/upload-profile', formData, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      setProfileImage(response.data.filePath);
+    } catch (error) {
+      console.error('Profile image upload failed', error);
     }
   };
 
@@ -130,13 +103,17 @@ const ChatRoom = ({ token, username }) => {
   };
 
   return (
-    <ChatRoomContainer>
-      <div>
+    <div className="chat-room-container">
+      <div className="profile-container">
+        <img src={profileImage} alt="Profile" className="profile-image" />
+        <input type="file" onChange={handleProfileImageUpload} className="profile-upload-input" />
+      </div>
+      <div className="user-list">
         {users.map((user) => (
           <div key={user.id}>{user.nickname}</div>
         ))}
       </div>
-      <MessageList>
+      <div className="message-list">
         {messages.map((msg, index) => (
           <div key={index}>
             <strong>{moment(msg.timestamp).format('YY-MM-DD HH:mm')}</strong> ({msg.nickname}): {msg.text}
@@ -147,21 +124,22 @@ const ChatRoom = ({ token, username }) => {
             )}
           </div>
         ))}
-      </MessageList>
-      <MessageInputContainer>
-        <MessageInput
+      </div>
+      <div className="message-input-container">
+        <input
           type="text"
           placeholder="Enter your message"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
+          className="message-input"
         />
-        <SendMessageButton onClick={handleSendMessage}>Send</SendMessageButton>
-        <UploadButton>
+        <button onClick={handleSendMessage} className="send-message-button">Send</button>
+        <label className="upload-button">
           <input type="file" style={{ display: 'none' }} onChange={handleFileUpload} />
           Upload
-        </UploadButton>
-      </MessageInputContainer>
-    </ChatRoomContainer>
+        </label>
+      </div>
+    </div>
   );
 };
 
