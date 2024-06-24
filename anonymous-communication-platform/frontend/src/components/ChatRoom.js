@@ -1,143 +1,97 @@
-import React, { useState, useEffect, useRef } from 'react';
-import io from 'socket.io-client';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import io from 'socket.io-client';
 import moment from 'moment';
 import './ChatRoom.css';
 
-const ChatRoom = ({ token, username }) => {
+const socket = io('http://localhost:4000', {
+  auth: {
+    token: localStorage.getItem('token')
+  }
+});
+
+const ChatRoom = ({ username }) => {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [users, setUsers] = useState([]);
-  const [profileImage, setProfileImage] = useState('');
-  const socketRef = useRef();
 
   useEffect(() => {
-    socketRef.current = io('http://localhost:4000', {
-      auth: { token }
-    });
+    socket.emit('join', username);
 
-    socketRef.current.on('loadMessages', (loadedMessages) => {
-      setMessages(loadedMessages.reverse());
-    });
-
-    socketRef.current.on('receiveMessage', (newMessage) => {
-      setMessages((prevMessages) => [newMessage, ...prevMessages]);
-    });
-
-    socketRef.current.on('users', (updatedUsers) => {
-      setUsers(updatedUsers);
-    });
-
-    socketRef.current.emit('join', username);
-
-    const fetchProfileImage = async () => {
-      try {
-        const response = await axios.get('http://localhost:4000/auth/profile', {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-        setProfileImage(response.data.profileImage);
-      } catch (error) {
-        console.error('Failed to fetch profile image', error);
-      }
+    const handleReceiveMessage = (message) => {
+      setMessages((prevMessages) => [...prevMessages, message]);
     };
 
-    fetchProfileImage();
+    const handleUsersUpdate = (users) => {
+      setUsers(users);
+    };
+
+    const handleLoadMessages = (loadedMessages) => {
+      setMessages(loadedMessages);
+    };
+
+    socket.on('receiveMessage', handleReceiveMessage);
+    socket.on('users', handleUsersUpdate);
+    socket.on('loadMessages', handleLoadMessages);
 
     return () => {
-      socketRef.current.disconnect();
+      socket.off('receiveMessage', handleReceiveMessage);
+      socket.off('users', handleUsersUpdate);
+      socket.off('loadMessages', handleLoadMessages);
     };
-  }, [token, username]);
+  }, [username]);
 
   const handleSendMessage = () => {
     if (message.trim()) {
-      const newMessage = {
-        nickname: username,
-        text: message,
-        timestamp: new Date()
-      };
-      socketRef.current.emit('sendMessage', newMessage);
+      const messageObject = { text: message, timestamp: new Date() };
+      socket.emit('sendMessage', messageObject);
       setMessage('');
     }
   };
 
-  const handleProfileImageUpload = async (e) => {
-    const file = e.target.files[0];
-    const formData = new FormData();
-    formData.append('profileImage', file);
-
-    try {
-      const response = await axios.post('http://localhost:4000/upload-profile', formData, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      setProfileImage(response.data.filePath);
-    } catch (error) {
-      console.error('Profile image upload failed', error);
-    }
-  };
-
-  const handleFileUpload = async (e) => {
-    const file = e.target.files[0];
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
     const formData = new FormData();
     formData.append('file', file);
 
     try {
       const response = await axios.post('http://localhost:4000/upload', formData, {
         headers: {
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${localStorage.getItem('token')}`
         }
       });
-      const newMessage = {
-        nickname: username,
-        text: response.data.filePath,
-        timestamp: new Date(),
-        file: response.data.filePath
-      };
-      socketRef.current.emit('sendMessage', newMessage);
+      const filePath = response.data.filePath;
+      const messageObject = { text: filePath, timestamp: new Date(), file: filePath };
+      socket.emit('sendMessage', messageObject);
     } catch (error) {
-      console.error('File upload failed', error);
+      console.error('File upload error:', error);
     }
   };
 
   return (
-    <div className="chat-room-container">
-      <div className="profile-container">
-        <img src={profileImage} alt="Profile" className="profile-image" />
-        <input type="file" onChange={handleProfileImageUpload} className="profile-upload-input" />
-      </div>
-      <div className="user-list">
-        {users.map((user) => (
+    <div className="ChatRoomContainer">
+      <div className="UserList">
+        {users.map(user => (
           <div key={user.id}>{user.nickname}</div>
         ))}
       </div>
-      <div className="message-list">
-        {messages.map((msg, index) => (
+      <div className="MessageList">
+        {messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)).map((msg, index) => (
           <div key={index}>
-            <strong>{moment(msg.timestamp).format('YY-MM-DD HH:mm')}</strong> ({msg.nickname}): {msg.text}
-            {msg.file && (
-              <div>
-                <a href={msg.file} download>Download File</a>
-              </div>
-            )}
+            <strong>{moment(msg.timestamp).format('YY-MM-DD HH:mm')} ({msg.nickname}):</strong> {msg.text}
           </div>
         ))}
       </div>
-      <div className="message-input-container">
+      <div className="MessageInputContainer">
         <input
           type="text"
+          className="MessageInput"
           placeholder="Enter your message"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          className="message-input"
         />
-        <button onClick={handleSendMessage} className="send-message-button">Send</button>
-        <label className="upload-button">
-          <input type="file" style={{ display: 'none' }} onChange={handleFileUpload} />
-          Upload
-        </label>
+        <button className="SendMessageButton" onClick={handleSendMessage}>Send</button>
+        <input type="file" onChange={handleFileUpload} />
       </div>
     </div>
   );

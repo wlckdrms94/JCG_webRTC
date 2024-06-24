@@ -5,6 +5,7 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const multer = require('multer');
 const path = require('path');
+const jwt = require('jsonwebtoken');
 const { router: authRouter, authenticate } = require('./auth');
 
 const app = express();
@@ -24,7 +25,7 @@ app.use('/auth', authRouter);
 mongoose.connect('mongodb://localhost:27017/chat', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 50000 // 타임아웃 시간 증가
+  serverSelectionTimeoutMS: 50000
 });
 
 const messageSchema = new mongoose.Schema({
@@ -73,9 +74,14 @@ io.on('connection', async (socket) => {
   });
 
   socket.on('sendMessage', async (message) => {
-    const newMessage = new Message(message);
+    const newMessage = new Message({
+      nickname: socket.user.username,
+      text: message.text,
+      timestamp: message.timestamp,
+      file: message.file
+    });
     await newMessage.save();
-    io.emit('receiveMessage', message);
+    io.emit('receiveMessage', newMessage);
   });
 
   socket.on('disconnect', () => {

@@ -1,26 +1,24 @@
-.chat-room-container {
+.ChatRoomContainer {
     display: flex;
     flex-direction: column;
     height: 100vh;
     background-color: #f5f5f5;
   }
   
-  .message-list {
+  .MessageList {
     flex: 1;
     padding: 10px;
     overflow-y: auto;
-    display: flex;
-    flex-direction: column-reverse;
   }
   
-  .message-input-container {
+  .MessageInputContainer {
     display: flex;
     padding: 10px;
     background-color: #fff;
     border-top: 1px solid #ccc;
   }
   
-  .message-input {
+  .MessageInput {
     flex: 1;
     padding: 10px;
     font-size: 16px;
@@ -28,7 +26,7 @@
     border-radius: 4px;
   }
   
-  .send-message-button {
+  .SendMessageButton {
     padding: 10px 20px;
     font-size: 16px;
     border: none;
@@ -39,46 +37,13 @@
     margin-left: 10px;
   }
   
-  .send-message-button:hover {
+  .SendMessageButton:hover {
     background-color: #0056b3;
   }
   
-  .upload-button {
-    padding: 10px 20px;
-    font-size: 16px;
-    border: none;
-    border-radius: 4px;
-    background-color: #007bff;
-    color: white;
-    cursor: pointer;
-    margin-left: 10px;
-  }
-  
-  .upload-button:hover {
-    background-color: #0056b3;
-  }
-
-  .profile-container {
-    display: flex;
-    align-items: center;
-    padding: 10px;
-    background-color: #fff;
-    border-bottom: 1px solid #ccc;
-  }
-  
-  .profile-image {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    margin-right: 10px;
-  }
-  
-  .profile-upload-input {
-    display: none;
-  }
-  
-  .user-list {
+  .UserList {
     padding: 10px;
     background-color: #e9ecef;
     border-bottom: 1px solid #ccc;
   }
+  
